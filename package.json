@@ -1,0 +1,62 @@
+{
+  "name": "echovip-headless",
+  "version": "1.0.0",
+  "private": true,
+  "license": "PolyForm-Noncommercial-1.0.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/moos1110/EchoVIP-Headless.git"
+  },
+  "homepage": "https://github.com/moos1110/EchoVIP-Headless#readme",
+  "bugs": {
+    "url": "https://github.com/moos1110/EchoVIP-Headless/issues"
+  },
+  "packageManager": "pnpm@12.4.2",
+  "description": "无 GUI 的酷狗概念版每日 VIP 领取工具",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "tsx src/main.ts",
+    "build": "npm run build:core && npm run build:web",
+    "build:core": "tsc -p tsconfig.json",
+    "build:web": "vue-tsc -p web/tsconfig.json --noEmit && vite build",
+    "start": "node dist/main.js",
+    "web": "node dist/control/server.js",
+    "web:dev": "npm run build && node dist/control/server.js",
+    "frontend:dev": "vite",
+    "scheduler:tick": "node dist/control/scheduler-cli.js",
+    "account:migrate": "node dist/control/admin-cli.js migrate-legacy",
+    "account:adopt": "node dist/control/admin-cli.js adopt",
+    "nginx:render": "node scripts/render-nginx-config.mjs",
+    "privacy:check": "node scripts/verify-release-privacy.mjs",
+    "login": "tsx src/main.ts login",
+    "status": "tsx src/main.ts status",
+    "claim": "tsx src/main.ts claim",
+    "refresh": "tsx src/main.ts refresh",
+    "logout": "tsx src/main.ts logout",
+    "device:reset": "tsx src/main.ts device:reset",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@fastify/cookie": "^11.1.2",
+    "@fastify/rate-limit": "^11.2.0",
+    "@fastify/static": "^10.1.4",
+    "axios": "^1.12.2",
+    "dotenv": "^17.2.2",
+    "fastify": "^5.12.5",
+    "qrcode-terminal": "^0.12.0",
+    "vue": "^3.5.43"
+  },
+  "devDependencies": {
+    "@types/node": "^22.18.6",
+    "@types/qrcode-terminal": "^0.12.2",
+    "@vitejs/plugin-vue": "^6.0.9",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.2",
+    "vite": "^8.3.0",
+    "vitest": "^5.0.1",
+    "vue-tsc": "^3.3.11"
+  }
+}

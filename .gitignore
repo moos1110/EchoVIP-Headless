@@ -1,0 +1,17 @@
+node_modules/
+dist/
+.env
+data/*
+!data/.gitkeep
+logs/*
+!logs/.gitkeep
+*.log
+login-qr.png
+coverage/
+accounts/
+control-data/
+web-dist/
+release/
+*.zip
+incoming/
+deploy/nginx-echovip.conf
