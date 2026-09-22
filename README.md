@@ -16,7 +16,7 @@ EchoVIP 是面向酷狗概念版的低频、固定设备身份、当天 VIP 领�
 - 将原接口服务整理为可直接运行的无 GUI CLI，固定并持久化设备身份，避免每天生成新设备。
 - 加入领取前远端月记录复核、本地幂等状态、有限重试、风控停止和敏感日志脱敏。
 - 增加多账号 Web 管理、本地二维码准备模式、服务器随机调度、全局串行锁和账号隔离。
-- 增加 Docker、Nginx、HTTPS、源码隐私检查、自动测试和可回退的服务器部署方式。
+- 增加 Docker、可选反向代理、源码隐私检查、自动测试和可回退的服务器部署方式。
 
 ## 为什么进行魔改
 
@@ -24,62 +24,107 @@ EchoVIP 是面向酷狗概念版的低频、固定设备身份、当天 VIP 领�
 
 本项目把账号本人每天可领取的权益放到服务器上按低频、固定设备身份自动执行。服务器领取成功后，权益记录在同一酷狗账号下，手机继续使用最新版酷狗概念版即可获得当天 VIP，无需再在手机端执行领取操作。它不提供永久会员、批量领取、未来日期领取、验证码绕过或风控规避；酷狗接口和平台规则发生变化时，使用者仍需自行评估风险并遵守平台条款。
 
+## 快速安装
+
+本地准备账号需要 Node.js 22 及以上版本；服务器自动运行需要 Linux、Docker Engine、Docker Compose v2 和 Cron。域名与反向代理都不是必需项。
+
+### 1. 下载项目
+
+```bash
+git clone https://github.com/moos1110/EchoVIP-Headless.git
+cd EchoVIP-Headless
+```
+
+也可以在 GitHub 下载源码压缩包，解压后进入项目目录。
+
+### 2. 选择一种运行方式
+
+- 只想在本地扫码并把账号数据交给服务器：按下方“方式一”操作，本地安装 Node.js 依赖，服务器只构建镜像并安装调度任务。
+- 希望随时远程管理账号：按下方“方式二”操作，服务器启动 Web 面板，可使用 `IP:端口`，也可交给任意反向代理绑定域名。
+
+`docker-compose.yml` 虽然定义了四个服务，但默认 `docker compose up -d` 只会启动 `echovip-web` 一个常驻容器。`echovip`、`echovip-scheduler` 和 `echovip-admin` 是登录、调度与迁移所需的按需命令，不会随默认启动常驻运行。
+
 ## 两种主要使用方式
 
-| 使用场景 | 无域名：本地准备账号后部署 | 有域名：服务器远程管理 |
+| 使用场景 | 本地准备账号后部署 | 服务器远程管理 |
 | --- | --- | --- |
-| 扫码登录位置 | 自己的电脑浏览器 | HTTPS 域名打开的服务器面板 |
+| 扫码登录位置 | 自己的电脑浏览器 | 服务器 Web 面板 |
 | 账号数据 | 本地生成后逐个复制到服务器 | 直接保存在服务器账号目录 |
-| 远程管理 | 不提供公网面板 | 支持账号、状态、日志和签到管理 |
+| 远程管理 | 不开放公网面板 | 支持账号、状态、日志和签到管理 |
 | 每日自动领取 | 由服务器调度器执行 | 由服务器调度器执行 |
-| 是否需要域名 | 不需要 | 需要域名、Nginx 和 HTTPS |
+| 域名与反向代理 | 不需要 | 可选，可直接使用 IP + 端口 |
 
 ### 方式一：无域名，本地准备账号后部署到服务器
 
-没有域名时，在自己的 Windows 电脑运行 `provisioning` 本地准备面板，通过浏览器完成二维码登录、账号备注和签到时间设置。本地模式不会查询签到状态、领取 VIP 或启动调度，只负责安全生成每个账号独立的 `accounts/<UUID>` 数据目录。
+在自己的 Windows 电脑运行 `provisioning` 面板，通过浏览器完成二维码登录、账号备注和签到时间设置。本地模式不会查询签到状态、领取 VIP 或启动调度，只负责生成每个账号独立的 `accounts/<UUID>` 数据目录。
 
 ![无域名时的本地账号准备面板](docs/screenshots/local-provisioning-dashboard.png)
 
 ```powershell
+git clone https://github.com/moos1110/EchoVIP-Headless.git
+Set-Location ".\EchoVIP-Headless"
 Copy-Item -LiteralPath ".env.example" -Destination ".env"
-# 编辑 .env：APP_MODE=provisioning，并设置面板密码和会话密钥
-npm install
+[Convert]::ToHexString([Security.Cryptography.RandomNumberGenerator]::GetBytes(32)).ToLower()
+# 用记事本编辑 .env：保持 APP_MODE=provisioning，填写 PANEL_PASSWORD，
+# 并把上一行生成的随机字符串填入 SESSION_SECRET。
+npm ci
 npm run build
 npm run web
 Start-Process "http://127.0.0.1:8787"
 ```
 
-二维码会同时显示在浏览器，并临时写入 `accounts/<UUID>/runtime/login-qr.png`；成功、取消或超时后自动删除。准备完成后，只需将对应的 `accounts/<UUID>` 目录复制到服务器 `incoming`，执行项目提供的账号接入命令并安装服务器调度任务。服务器不需要对公网开放 Web 面板，也不需要购买或配置域名；以后需要重新登录时，可以在本地重新准备该账号再复制到服务器。
-
-### 方式二：有域名，在服务器上远程管理
-
-有域名时，将面板以 `server` 模式部署在服务器，通过 Nginx 和 HTTPS 对外提供访问。登录面板后可以远程新增或删除账号、扫码登录、退出或重新登录、刷新状态、手动签到、启停自动签到、调整时间窗，并查看每次手动操作和自动任务的脱敏日志。
-
-![有域名时的远程管理面板登录页](docs/screenshots/remote-panel-login.png)
-
-服务器 `.env` 至少设置：
-
-```env
-APP_MODE=server
-PANEL_DOMAIN=vip.example.com
-# 可选，留空时自动按 PANEL_DOMAIN 使用 https://vip.example.com
-PUBLIC_BASE_URL=
-PANEL_PASSWORD=由用户自行设置的面板密码
-SESSION_SECRET=至少32字符的独立随机字符串
-SECURE_COOKIES=true
-TZ=Asia/Shanghai
-```
-
-启动面板：
+二维码会同时显示在浏览器，并临时写入 `accounts/<UUID>/runtime/login-qr.png`；成功、取消或超时后自动删除。准备完成后，按“本地账号复制到服务器”一节上传单个账号目录。服务器执行以下命令构建镜像并安装调度器，不必启动 Web 面板：
 
 ```bash
 docker compose build
-docker compose up -d echovip-web
+chmod +x scripts/run-scheduler-tick.sh scripts/install-multi-account-cron.sh
+./scripts/install-multi-account-cron.sh
 ```
 
-Web 容器只映射 `127.0.0.1:8787`，公网必须通过 Nginx HTTPS 域名访问，不应直接开放 8787 端口。
+### 方式二：服务器远程管理（IP + 端口或域名）
 
-域名不必等到服务器部署时再决定。下载源码后即可在本地 `.env` 的 `PANEL_DOMAIN` 中写入纯域名，配置会随本人的 `.env` 保留但不会进入 Git 或源码发布包。部署前执行 `npm run nginx:render`，即可由该域名生成 `deploy/nginx-echovip.conf`；生成文件同样不会提交到 Git。
+在服务器以 `server` 模式运行面板后，可以远程新增或删除账号、扫码登录、退出或重新登录、刷新状态、手动签到、启停自动签到、调整时间窗，并查看每次手动操作和自动任务的脱敏日志。
+
+![服务器远程管理面板登录页](docs/screenshots/remote-panel-login.png)
+
+先准备配置并启动：
+
+```bash
+cp .env.example .env
+openssl rand -hex 32
+# 编辑 .env：设置 APP_MODE=server、PANEL_PASSWORD 和 SESSION_SECRET；
+# SESSION_SECRET 使用上一行生成的随机字符串。
+docker compose up -d --build
+```
+
+直接使用服务器 IP 和端口时，在 `.env` 中设置：
+
+```env
+APP_MODE=server
+WEB_PUBLISH_HOST=0.0.0.0
+WEB_PUBLISH_PORT=8787
+PUBLIC_BASE_URL=http://<服务器IP>:8787
+PANEL_PASSWORD=由用户自行设置的面板密码
+SESSION_SECRET=至少32字符的独立随机字符串
+SECURE_COOKIES=false
+```
+
+然后访问 `http://服务器IP:8787`。这种 HTTP 方式适合可信局域网、VPN 或临时测试；还应使用服务器防火墙限制来源。若要长期暴露在公网，建议启用 HTTPS。
+
+使用域名和反向代理时，在 `.env` 中设置：
+
+```env
+APP_MODE=server
+WEB_PUBLISH_HOST=127.0.0.1
+WEB_PUBLISH_PORT=8787
+PANEL_DOMAIN=vip.example.com
+PUBLIC_BASE_URL=https://vip.example.com
+PANEL_PASSWORD=由用户自行设置的面板密码
+SESSION_SECRET=至少32字符的独立随机字符串
+SECURE_COOKIES=true
+```
+
+反向代理只需转发到 `http://127.0.0.1:8787`，可以使用 Nginx、Caddy、Traefik 或现有面板，不限定具体软件。仓库中的 Nginx 模板只是可选示例；填写 `PANEL_DOMAIN` 后执行 `npm run nginx:render` 可生成 `deploy/nginx-echovip.conf`。`.env` 和生成的配置都不会进入 Git 或源码发布包。
 
 ### 补充方式：原单账号 CLI
 
@@ -179,7 +224,7 @@ Cron 每分钟只执行本地计划检查，只有账号到达随机秒数时才
 ## 面板安全
 
 - `PANEL_PASSWORD` 是项目自己的密码，不是 Linux、SSH 或云服务器密码；项目没有默认密码。
-- `SESSION_SECRET` 至少 32 字符；服务器必须通过 HTTPS 并启用 `SECURE_COOKIES=true`。
+- `SESSION_SECRET` 至少 32 字符；面向公网长期开放时必须通过 HTTPS 访问并启用 `SECURE_COOKIES=true`。
 - 登录接口限速，会话使用签名的 HttpOnly、SameSite Cookie，写操作同时校验 Origin 和 CSRF Token。
 - API 不返回 Token、Cookie、二维码原始链接或完整设备标识；日志读取前再次脱敏。
 - `.env`、`accounts/`、`control-data/`、二维码、日志和发布压缩包均被 Git 排除。
