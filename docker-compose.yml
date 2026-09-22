@@ -2,6 +2,7 @@ name: echovip-headless
 
 services:
   echovip:
+    profiles: ["cli"]
     build: .
     image: echovip-headless:local
     environment:
@@ -43,10 +44,11 @@ services:
       - ./accounts:/app/accounts
       - ./control-data:/app/control-data
     ports:
-      - "127.0.0.1:8787:8787"
+      - "${WEB_PUBLISH_HOST:-127.0.0.1}:${WEB_PUBLISH_PORT:-8787}:8787"
     restart: unless-stopped
 
   echovip-scheduler:
+    profiles: ["tools"]
     build: .
     image: echovip-headless:local
     entrypoint: ["node", "dist/control/scheduler-cli.js"]
@@ -65,6 +67,7 @@ services:
     restart: "no"
 
   echovip-admin:
+    profiles: ["tools"]
     build: .
     image: echovip-headless:local
     entrypoint: ["node", "dist/control/admin-cli.js"]
