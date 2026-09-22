@@ -219,3 +219,8 @@ docker compose run --rm echovip --help
 ```
 
 测试覆盖冻结核心、账号隔离、重复用户、调度随机范围、停机补签、手动成功跳过、密码会话、CSRF、本地模式权限和子进程目录隔离。运行镜像不包含 Electron、Chromium、X11、Xvfb、FFmpeg 或音频组件。
+
+## 友情链接
+
+- [LINUX DO 社区](https://linux.do/)——新的理想型社区。
+- [LINUX DO 开源推广说明](https://linux.do/t/topic/1776670)
