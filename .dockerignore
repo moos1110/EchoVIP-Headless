@@ -1,0 +1,15 @@
+node_modules
+dist
+web-dist
+.git
+.env
+accounts
+control-data
+incoming
+release
+data/*
+!data/.gitkeep
+logs/*
+!logs/.gitkeep
+*.log
+*.zip

@@ -1,0 +1,80 @@
+name: echovip-headless
+
+services:
+  echovip:
+    build: .
+    image: echovip-headless:local
+    environment:
+      TZ: ${TZ:-Asia/Shanghai}
+      DATA_DIR: /app/data
+      LOG_DIR: /app/logs
+      REQUEST_TIMEOUT_MS: ${REQUEST_TIMEOUT_MS:-15000}
+      MAX_RETRIES: ${MAX_RETRIES:-2}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      KUGOU_API_PROXY: ${KUGOU_API_PROXY:-}
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+    stdin_open: true
+    tty: true
+    restart: "no"
+
+  echovip-web:
+    build: .
+    image: echovip-headless:local
+    entrypoint: ["node", "dist/control/server.js"]
+    environment:
+      TZ: ${TZ:-Asia/Shanghai}
+      APP_MODE: ${APP_MODE:-provisioning}
+      ACCOUNTS_DIR: /app/accounts
+      CONTROL_DIR: /app/control-data
+      WEB_HOST: 0.0.0.0
+      WEB_PORT: 8787
+      PANEL_DOMAIN: ${PANEL_DOMAIN:-}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-}
+      PANEL_PASSWORD: ${PANEL_PASSWORD:-}
+      SESSION_SECRET: ${SESSION_SECRET:-}
+      SECURE_COOKIES: ${SECURE_COOKIES:-false}
+      REQUEST_TIMEOUT_MS: ${REQUEST_TIMEOUT_MS:-15000}
+      MAX_RETRIES: ${MAX_RETRIES:-2}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      KUGOU_API_PROXY: ${KUGOU_API_PROXY:-}
+    volumes:
+      - ./accounts:/app/accounts
+      - ./control-data:/app/control-data
+    ports:
+      - "127.0.0.1:8787:8787"
+    restart: unless-stopped
+
+  echovip-scheduler:
+    build: .
+    image: echovip-headless:local
+    entrypoint: ["node", "dist/control/scheduler-cli.js"]
+    environment:
+      TZ: ${TZ:-Asia/Shanghai}
+      APP_MODE: server
+      ACCOUNTS_DIR: /app/accounts
+      CONTROL_DIR: /app/control-data
+      REQUEST_TIMEOUT_MS: ${REQUEST_TIMEOUT_MS:-15000}
+      MAX_RETRIES: ${MAX_RETRIES:-2}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      KUGOU_API_PROXY: ${KUGOU_API_PROXY:-}
+    volumes:
+      - ./accounts:/app/accounts
+      - ./control-data:/app/control-data
+    restart: "no"
+
+  echovip-admin:
+    build: .
+    image: echovip-headless:local
+    entrypoint: ["node", "dist/control/admin-cli.js"]
+    environment:
+      TZ: ${TZ:-Asia/Shanghai}
+      APP_MODE: ${APP_MODE:-provisioning}
+      ACCOUNTS_DIR: /app/accounts
+      CONTROL_DIR: /app/control-data
+    volumes:
+      - ./accounts:/app/accounts
+      - ./data:/app/legacy-data:ro
+      - ./incoming:/app/incoming
+    restart: "no"
