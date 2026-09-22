@@ -1,0 +1,6 @@
+[[allowlists]]
+description = "Known public KuGou protocol encryption constant"
+condition = "AND"
+regexTarget = "line"
+paths = ['''^src/api/login\.ts$''']
+regexes = ['''^\s*const fixedKey = 'c24f74ca2820225badc01946dba4fdf7';\s*$''']
